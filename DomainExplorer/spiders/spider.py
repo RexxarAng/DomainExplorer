@@ -6,7 +6,8 @@ from tabulate import tabulate
 
 class Spider(scrapy.Spider):
     name = 'spider'
-    start_urls = ['https://clever-lichterman-044f16.netlify.com']  # Replace with your initial URL(s)
+    # demo_sites = ['https://demo.owasp-juice.shop/sitemap.xml#/', 'https://clever-lichterman-044f16.netlify.app/']
+    start_urls = ['https://www.globalsqa.com/angularJs-protractor/BankingProject']  # Replace with your initial URL(s)
     visited_urls = set()
     sequence = {}
 

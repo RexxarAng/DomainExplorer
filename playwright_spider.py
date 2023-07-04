@@ -6,9 +6,9 @@ from tabulate import tabulate
 import logging
 
 
-class Spider:
+class PlayWrightSpider:
     def __init__(self):
-        self.start_urls = ['https://clever-lichterman-044f16.netlify.com/', 'https://www.globalsqa.com/angularJs-protractor/BankingProject']
+        self.start_urls = ['https://petstore.swagger.io/', 'https://www.globalsqa.com/angularJs-protractor/BankingProject']
         self.visited_urls = set()
         self.sequence = {}
         self.browser = None
@@ -28,7 +28,7 @@ class Spider:
 
                 self.visited_urls = set()
                 self.sequence = {}
-                self.parse_page(url, None, urlparse(url).netloc)
+                self.parse_page(url)
 
                 # Extracted data
                 visited_data = [(url, self.sequence.get(url, '')) for url in self.visited_urls]
@@ -39,16 +39,14 @@ class Spider:
                 logging.info('Crawling completed in %.2f seconds. Visited URLs:\n%s', elapsed_time, table)
             self.browser.close()
 
-    def parse_page(self, url, parent_url, domain):
-        start_time = time.time()  # Track start time
+    def parse_page(self, url, parent_url=None, domain=None):
         page = self.context.new_page()
         page.goto(url)
+        if domain is None:
+            domain = urlparse(page.url).netloc
         page.wait_for_load_state('networkidle')
-        end_time = time.time()  # Track end time
-        elapsed_time = end_time - start_time
-        print("Elapsed time to go to new url: ", elapsed_time)
         current_url = page.url
-        if current_url not in self.visited_urls:
+        if current_url not in self.visited_urls and self.is_same_domain(current_url, domain):
             self.visited_urls.add(current_url)
             self.sequence[current_url] = parent_url
 
@@ -61,7 +59,6 @@ class Spider:
 
             # Extract links from the page
             links = page.query_selector_all('a, [ng-click]')
-            page.close()
             for link in links:
                 href_value = link.get_attribute('href')
                 ng_click_value = link.get_attribute('ng-click')
@@ -71,10 +68,13 @@ class Spider:
                     if (urlparse(absolute_url).netloc == domain) and absolute_url not in self.visited_urls:
                         self.parse_page(absolute_url, current_url, domain)
 
+        page.close()
 
+    def is_same_domain(self, url, domain):
+        return urlparse(url).netloc == domain
 # Configure logging
 logging.getLogger().setLevel(logging.INFO)
 
 # Run the spider
-spider = Spider()
+spider = PlayWrightSpider()
 spider.crawl_website()
