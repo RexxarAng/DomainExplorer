@@ -12,7 +12,7 @@ from pyppeteer import launch
 
 class PyppeteerSpider:
     def __init__(self):
-        self.start_urls = ['https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login']
+        self.start_urls = ['https://www.globalsqa.com/angularJs-protractor/BankingProject']
         self.visited_urls = set()
         self.sequence = {}
         self.executed_functions = set()
@@ -24,6 +24,7 @@ class PyppeteerSpider:
     async def crawl_website(self):
         self.browser = await launch(headless=False)
         self.page = await self.browser.newPage()
+        self.page.setJavaScriptEnabled(True)
 
         logging.basicConfig(level=logging.INFO)
 
@@ -61,15 +62,17 @@ class PyppeteerSpider:
             url = self.pending_urls.pop()
             if url not in self.visited_urls and self.is_same_domain(url, domain):
                 self.visited_urls.add(url)
-
+                print(f"crawling: {url}")
                 parent_url = self.sequence[url]
                 logging.info('Visited URL: %s', url)
                 if parent_url:
                     logging.info('Retrieved from: %s', parent_url)
 
                 await self.page.goto(url)
+                await asyncio.sleep(2)
 
                 links = await self.page.querySelectorAll('a')
+                print(links)
                 for link in links:
                     href_value = await self.page.evaluate('(element) => element.href', link)
                     if href_value:
@@ -77,56 +80,72 @@ class PyppeteerSpider:
                         self.sequence[absolute_url] = url
                         self.pending_urls.add(absolute_url)
 
-                await asyncio.sleep(1)  # Add a delay to ensure content is loaded
+                # Store the current URL before clicking the element
+                current_url = self.page.url
 
-                ng_click_elements = await self.page.querySelectorAll('[ng-click]')
+                should_continue = True
+                while should_continue:
+                    has_executed = False
+                    # Find the desired elements on the page
+                    ng_click_elements = await self.page.querySelectorAll('[ng-click]')
+                    # Iterate through the elements and perform actions
+                    for element in ng_click_elements:
+                        ng_click_value = await self.page.evaluate('(element) => element.getAttribute("ng-click")', element)
+                        if ng_click_value:
+                            function_name, arguments = self.extract_ng_click_info(ng_click_value)
+                            is_visible = await element.isIntersectingViewport()
+                            if not is_visible:
 
-                for element in ng_click_elements:
-                    ng_click_value = await self.page.evaluate('(element) => element.getAttribute("ng-click")', element)
-                    if ng_click_value:
-                        function_name, arguments = self.extract_ng_click_info(ng_click_value)
-                        if function_name and function_name not in self.executed_functions:
-                            self.executed_functions.add(function_name)
-                            await self.middle_click_element(element)
+                                continue
+                            if function_name and function_name not in self.executed_functions:
+                                self.executed_functions.add(function_name)
+                                # Perform the click action
+                                await element.click()
+                                await asyncio.sleep(2)
+
+                                self.pending_urls.add(self.page.url)
+                                self.sequence[self.page.url] = current_url
+
+                                # After the redirection, navigate back to the previous page
+                                await self.page.goto(current_url)
+                                await asyncio.sleep(2)
+                                has_executed = True
+                                break
+                    if not has_executed:
+                        break
 
         await self.page.close()
 
-    async def middle_click_element(self, element):
-        # Check if the element is visible
-        is_visible = await element.isIntersectingViewport()
-        if not is_visible:
-            return
-        # Get the bounding box of the element
-        bounding_box = await element.boundingBox()
-
-        # Calculate the middle position of the element
-        x = bounding_box['x'] + bounding_box['width'] / 2
-        y = bounding_box['y'] + bounding_box['height'] / 2
-
-        # Open a new tab by middle-clicking the element
-        await asyncio.gather(
-            self.page.mouse.click(x, y, button='middle'),
-            self.wait_for_new_tab()
-        )
-
-    async def wait_for_new_tab(self):
-        new_page_target = None
-
-        def target_created(target):
-            nonlocal new_page_target
-            if target.type == 'page':
-                new_page_target = target
-
-        self.browser.on('targetcreated', target_created)
-
-        await self.page.waitFor(1000)  # Wait for some time to allow new tab creation
-
-        if new_page_target:
-            new_page = await new_page_target.page()
-            print(new_page.url)
-            self.pending_urls.add(new_page.url)
-
-        self.browser.remove_listener('targetcreated', target_created)
+    # async def click_element(self, element, parent_url):
+    #     # Enable request interception
+    #     await self.page.setRequestInterception(True)
+    #
+    #     # Check if the element is visible
+    #     is_visible = await element.isIntersectingViewport()
+    #     if not is_visible:
+    #         logging.info(self.page.url)
+    #         logging.info('Element is not visible. Skipping click.')
+    #         return
+    #
+    #     # Intercept requests to capture the URL and add it to the sequence
+    #     self.page.on('request', lambda request: self.intercept_requests(request, parent_url))
+    #
+    #     # Click on the element
+    #     await element.click()
+    #
+    #     self.page.on('request', None)
+    #
+    # def intercept_requests(self, request, parent_url):
+    #     print(f'Intercepted URL: {request.url}')
+    #     # Allow requests to proceed unless it's a navigation request
+    #     if request.resourceType == 'xhr':
+    #         if request.url not in self.sequence:
+    #             print(f"adding url: {request.url}")
+    #             self.pending_urls.add(request.url)
+    #             self.sequence[request.url] = parent_url
+    #         asyncio.ensure_future(request.abort())
+    #     else:
+    #         asyncio.ensure_future(request.continue_())
 
     def is_same_domain(self, url, domain):
         return urlparse(url).netloc == domain
