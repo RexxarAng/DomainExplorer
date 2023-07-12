@@ -1,6 +1,7 @@
 {
+  "headless": "false",
   "start_urls": [
-    "https://www.globalsqa.com/angularJs-protractor/BankingProject",
+    "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
     "https://clever-lichterman-044f16.netlify.com/"
   ]
 }

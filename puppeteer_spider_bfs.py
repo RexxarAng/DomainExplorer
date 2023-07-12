@@ -1,30 +1,49 @@
-import time
-from collections import deque
-from urllib.parse import urlparse, urljoin
-
-from pyppeteer.page import Page
-from tabulate import tabulate
+import asyncio
+import json
 import logging
 import re
-import asyncio
+import time
+from urllib.parse import urlparse, urljoin
 from pyppeteer import launch
+from tabulate import tabulate
 
 
 class PyppeteerSpider:
     def __init__(self):
-        self.start_urls = ['https://clever-lichterman-044f16.netlify.com/']
+        self.headless = False
+        self.start_urls = None
+        self.load_config("config.json")
         self.visited_urls = set()
         self.sequence = {}
         self.executed_functions = set()
         self.browser = None
         self.page = None
         self.pending_urls = set()
-        self.aborted_urls = set()
+
+    def load_config(self, config_path):
+        with open(config_path) as f:
+            config = json.load(f)
+            self.start_urls = config.get('start_urls', [])
+            if config.get('headless').lower() == "true":
+                self.headless = True
+            else:
+                self.headless = False
+
+    def normalize_url(self, url):
+        if url.endswith('/'):
+            url = url[:-1]
+        if url.endswith('/#'):
+            url = url[:-2]
+        return url
 
     async def crawl_website(self):
-        self.browser = await launch(headless=False)
-        self.page = await self.browser.newPage()
-        self.page.setJavaScriptEnabled(True)
+        if self.headless:
+            self.browser = await launch(headless=True)
+        else:
+            self.browser = await launch()
+        pages = await self.browser.pages()
+        self.page = pages[0]
+        await self.page.setJavaScriptEnabled(True)
 
         logging.basicConfig(level=logging.INFO)
 
@@ -35,11 +54,14 @@ class PyppeteerSpider:
             self.sequence = {}
             self.executed_functions = set()
             self.pending_urls = set()
-            self.aborted_urls = set()
-            self.pending_urls.add(url)
-            self.sequence[url] = None  # Add an initial entry to the sequence dictionary
-
-            await self.bfs_crawl()
+            normalized_url = self.normalize_url(url)
+            self.pending_urls.add(normalized_url)
+            self.sequence[normalized_url] = None  # Add an initial entry to the sequence dictionary
+            try:
+                await self.bfs_crawl(urlparse(normalized_url).netloc)
+            except Exception as e:
+                print(e)
+                await self.browser.close()
 
             visited_data = [(url, self.sequence.get(url, '')) for url in self.visited_urls]
             headers = ['Visited URL', 'Parent URL']
@@ -50,81 +72,63 @@ class PyppeteerSpider:
 
         await self.browser.close()
 
-        # Print the aborted URLs
-        if self.aborted_urls:
-            print("Aborted URLs:")
-            for url in self.aborted_urls:
-                print(url)
-
-    async def bfs_crawl(self):
-        domain = urlparse(self.start_urls[0]).netloc
+    async def bfs_crawl(self, domain):
         while self.pending_urls:
             url = self.pending_urls.pop()
-            if url not in self.visited_urls and self.is_same_domain(url, domain):
-                self.visited_urls.add(url)
-                print(f"crawling: {url}")
-                parent_url = self.sequence[url]
-                logging.info('Visited URL: %s', url)
+            normalized_url = self.normalize_url(url)
+            if normalized_url not in self.visited_urls and self.is_same_domain(normalized_url, domain):
+                self.visited_urls.add(normalized_url)
+                parent_url = self.sequence[normalized_url]
+                logging.info('Visited URL: %s', normalized_url)
                 if parent_url:
                     logging.info('Retrieved from: %s', parent_url)
 
                 await self.page.goto(url)
+                await asyncio.sleep(3)
 
+                await self.process_links(url)
+                await self.execute_ng_click_elements()
 
-                links = await self.page.querySelectorAll('a')
-                print(links)
-                for link in links:
-                    href_value = await self.page.evaluate('(element) => element.href', link)
-                    if href_value:
-                        absolute_url = urljoin(url, href_value)
-                        self.sequence[absolute_url] = url
-                        self.pending_urls.add(absolute_url)
+    async def process_links(self, parent_url):
+        links = await self.page.querySelectorAll('a')
+        for link in links:
+            href_value = await self.page.evaluate('(element) => element.href', link)
+            if href_value:
+                absolute_url = urljoin(parent_url, href_value)
+                if absolute_url not in self.visited_urls:
+                    normalized_url = self.normalize_url(absolute_url)
+                    normalized_parent_url = self.normalize_url(parent_url)
+                    self.sequence[normalized_url] = normalized_parent_url
+                    self.pending_urls.add(normalized_url)
 
-                ng_click_elements = await self.page.querySelectorAll('[ng-click]')
-
-                for element in ng_click_elements:
-                    ng_click_value = await self.page.evaluate('(element) => element.getAttribute("ng-click")', element)
-                    if ng_click_value:
-                        function_name, arguments = self.extract_ng_click_info(ng_click_value)
-                        if function_name and function_name not in self.executed_functions:
-                            self.executed_functions.add(function_name)
-                            await self.click_element(element, url)
-
-        await self.page.close()
-
-    async def click_element(self, element, parent_url):
-        # Enable request interception
-        await self.page.setRequestInterception(True)
-
-        # Check if the element is visible
-        is_visible = await element.isIntersectingViewport()
-        if not is_visible:
-            logging.info(self.page.url)
-            logging.info('Element is not visible. Skipping click.')
-            return
-
-        # Intercept requests to capture the URL and add it to the sequence
-        self.page.on('request', lambda request: self.intercept_requests(request, parent_url))
-
-        # Click on the element
-        await element.click()
-
-        self.page.on('request', None)
-
-
-    def intercept_requests(self, request, parent_url):
-
-        print(f'Intercepted URL: {request.url}')
-        # Allow requests to proceed unless it's a navigation request
-        if request.resourceType == 'xhr':
-            if request.url not in self.sequence:
-                print(f"adding url: {request.url}")
-                self.pending_urls.add(request.url)
-                self.sequence[request.url] = parent_url
-            asyncio.ensure_future(request.abort())
-        else:
-            asyncio.ensure_future(request.continue_())        # Add the request URL and parent URL to the sequence
-
+    async def execute_ng_click_elements(self):
+        current_url = await self.page.evaluate('window.location.href')
+        current_url = self.normalize_url(current_url)
+        execute_more_functions = True
+        while execute_more_functions:
+            has_executed = False
+            ng_click_elements = await self.page.querySelectorAll('[ng-click]')
+            for element in ng_click_elements:
+                ng_click_value = await self.page.evaluate('(element) => element.getAttribute("ng-click")', element)
+                if ng_click_value:
+                    is_visible = await element.isIntersectingViewport()
+                    if not is_visible:
+                        continue
+                    if ng_click_value and ng_click_value not in self.executed_functions:
+                        self.executed_functions.add(ng_click_value)
+                        await element.click()
+                        await asyncio.sleep(3)
+                        page_url = await self.page.evaluate('window.location.href')
+                        normalized_url = self.normalize_url(page_url)
+                        if normalized_url != current_url and normalized_url not in self.visited_urls:
+                            self.pending_urls.add(normalized_url)
+                            self.sequence[normalized_url] = current_url
+                            await self.page.goBack()
+                            await asyncio.sleep(3)
+                        has_executed = True
+                        break
+            if not has_executed:
+                break
 
     def is_same_domain(self, url, domain):
         return urlparse(url).netloc == domain
