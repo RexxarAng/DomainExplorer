@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import re
 import time
@@ -9,14 +10,26 @@ from tabulate import tabulate
 
 class PyppeteerSpider:
     def __init__(self):
-        self.start_urls = ['https://www.globalsqa.com/angularJs-protractor/BankingProject',
-                           'https://clever-lichterman-044f16.netlify.com/']
+        self.start_urls = None
+        self.load_config("config.json")
         self.visited_urls = set()
         self.sequence = {}
         self.executed_functions = set()
         self.browser = None
         self.page = None
         self.pending_urls = set()
+
+    def load_config(self, config_path):
+        with open(config_path) as f:
+            config = json.load(f)
+            self.start_urls = config.get('start_urls', [])
+
+    def normalize_url(self, url):
+        if url.endswith('/'):
+            url = url[:-1]
+        if url.endswith('/#'):
+            url = url[:-2]
+        return url
 
     async def crawl_website(self):
         self.browser = await launch(headless=False)
@@ -33,7 +46,6 @@ class PyppeteerSpider:
             self.sequence = {}
             self.executed_functions = set()
             self.pending_urls = set()
-            self.aborted_urls = set()
             self.pending_urls.add(url)
             self.sequence[url] = None  # Add an initial entry to the sequence dictionary
             try:
@@ -54,7 +66,8 @@ class PyppeteerSpider:
     async def bfs_crawl(self, domain):
         while self.pending_urls:
             url = self.pending_urls.pop()
-            if url not in self.visited_urls and self.is_same_domain(url, domain):
+            normalized_url = self.normalize_url(url)
+            if normalized_url not in self.visited_urls and self.is_same_domain(url, domain):
                 self.visited_urls.add(url)
                 parent_url = self.sequence[url]
                 logging.info('Visited URL: %s', url)
@@ -62,7 +75,7 @@ class PyppeteerSpider:
                     logging.info('Retrieved from: %s', parent_url)
 
                 await self.page.goto(url)
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
 
                 links = await self.page.querySelectorAll('a')
                 for link in links:
@@ -93,14 +106,13 @@ class PyppeteerSpider:
                                 self.executed_functions.add(ng_click_value)
                                 # Perform the click action
                                 await element.click()
-                                await asyncio.sleep(2)
-
-                                self.pending_urls.add(self.page.url)
-                                self.sequence[self.page.url] = current_url
-
-                                # After the redirection, navigate back to the previous page
-                                await self.page.goto(current_url)
-                                await asyncio.sleep(2)
+                                await asyncio.sleep(3)
+                                if self.page.url != current_url:
+                                    self.pending_urls.add(self.page.url)
+                                    self.sequence[self.page.url] = current_url
+                                    # After the redirection, navigate back to the previous page
+                                    await self.page.goBack()
+                                    await asyncio.sleep(3)
                                 has_executed = True
                                 break
                     if not has_executed:
