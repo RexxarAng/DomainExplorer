@@ -29,6 +29,7 @@ class PyppeteerSpider:
     def load_config(self, config_path):
         with open(config_path) as f:
             config = json.load(f)
+            self.chrome_path = config.get('chrome_path')
             self.start_urls = config.get('start_urls', [])
             if config.get('headless').lower() == "true":
                 self.headless = True
@@ -50,9 +51,9 @@ class PyppeteerSpider:
 
     async def crawl_website(self):
         if self.headless:
-            self.browser = await launch(headless=True)
+            self.browser = await launch(executablePath=self.chrome_path)
         else:
-            self.browser = await launch()
+            self.browser = await launch(headless=False, executablePath=self.chrome_path)
         pages = await self.browser.pages()
         self.page = pages[0]
         await self.page.setJavaScriptEnabled(True)
@@ -120,8 +121,12 @@ class PyppeteerSpider:
                 if parent_url:
                     logging.info('Retrieved from: %s', parent_url)
 
-                await self.page.goto(url)
-                await asyncio.sleep(3)
+                try:
+                    await self.page.goto(url, timeout=15000)
+                    await asyncio.sleep(3)
+                except Exception as e:
+                    logging.error('Navigation Timeout Error: %s', str(e))
+                    continue  # Skip to the next URL
 
                 await self.process_links(url, domain)
                 await self.execute_ng_click_elements(domain)
@@ -132,10 +137,10 @@ class PyppeteerSpider:
             href_value = await self.page.evaluate('(element) => element.href', link)
             if href_value:
                 normalized_url = self.normalize_url(urljoin(parent_url, href_value))
-                if normalized_url not in self.visited_urls and self.is_same_domain(normalized_url,
-                                                                                   domain) and normalized_url not in self.sequence:
+                if normalized_url not in self.visited_urls and self.is_same_domain(normalized_url, domain):
                     normalized_parent_url = self.normalize_url(parent_url)
-                    self.sequence[normalized_url] = normalized_parent_url
+                    if normalized_url not in self.sequence:
+                        self.sequence[normalized_url] = normalized_parent_url
                     self.pending_urls.add(normalized_url)
 
     async def execute_ng_click_elements(self, domain):

@@ -45,5 +45,30 @@
     "https://clever-lichterman-044f16.netlify.com/terms-conditions": [
         "https://clever-lichterman-044f16.netlify.com",
         "https://clever-lichterman-044f16.netlify.com/terms-conditions"
+    ],
+    "https://clever-lichterman-044f16.netlify.com/products/taba-shampoo.1": [
+        "https://clever-lichterman-044f16.netlify.com",
+        "https://clever-lichterman-044f16.netlify.com/products",
+        "https://clever-lichterman-044f16.netlify.com/products/taba-shampoo.1"
+    ],
+    "https://clever-lichterman-044f16.netlify.com/products/taba-shampoo.2": [
+        "https://clever-lichterman-044f16.netlify.com",
+        "https://clever-lichterman-044f16.netlify.com/products",
+        "https://clever-lichterman-044f16.netlify.com/products/taba-shampoo.2"
+    ],
+    "https://clever-lichterman-044f16.netlify.com/products/taba-shampoo": [
+        "https://clever-lichterman-044f16.netlify.com",
+        "https://clever-lichterman-044f16.netlify.com/products",
+        "https://clever-lichterman-044f16.netlify.com/products/taba-shampoo"
+    ],
+    "https://clever-lichterman-044f16.netlify.com/blog/post-2": [
+        "https://clever-lichterman-044f16.netlify.com",
+        "https://clever-lichterman-044f16.netlify.com/blog",
+        "https://clever-lichterman-044f16.netlify.com/blog/post-2"
+    ],
+    "https://clever-lichterman-044f16.netlify.com/blog/post-1": [
+        "https://clever-lichterman-044f16.netlify.com",
+        "https://clever-lichterman-044f16.netlify.com/blog",
+        "https://clever-lichterman-044f16.netlify.com/blog/post-1"
     ]
 }

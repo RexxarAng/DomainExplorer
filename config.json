@@ -1,5 +1,6 @@
 {
   "headless": "false",
+  "chrome_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "start_urls": [
     "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
     "https://clever-lichterman-044f16.netlify.com/"
