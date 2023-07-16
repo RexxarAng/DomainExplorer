@@ -41,7 +41,6 @@ class PyppeteerSpider:
         with open(file_path, "w") as f:
             json.dump(sequence_map, f, indent=4)
 
-
     def normalize_url(self, url):
         if url.endswith('/'):
             url = url[:-1]
@@ -143,21 +142,33 @@ class PyppeteerSpider:
                         self.sequence[normalized_url] = normalized_parent_url
                     self.pending_urls.add(normalized_url)
 
+    async def query_elements_with_attributes(self, attribute_selectors):
+        elements = []
+        for attribute_selector in attribute_selectors:
+            attribute_elements = await self.page.querySelectorAll(attribute_selector)
+            elements.extend(attribute_elements)
+        return elements
+
     async def execute_ng_click_elements(self, domain):
         current_url = await self.page.evaluate('window.location.href')
         current_url = self.normalize_url(current_url)
         execute_more_functions = True
         while execute_more_functions:
             has_executed = False
-            ng_click_elements = await self.page.querySelectorAll('[ng-click]')
-            for element in ng_click_elements:
-                ng_click_value = await self.page.evaluate('(element) => element.getAttribute("ng-click")', element)
-                if ng_click_value:
+            attribute_selectors = ['ng-click', 'click', 'onClick']
+            elements = await self.query_elements_with_attributes([f'[{attr}]' for attr in attribute_selectors])
+            for element in elements:
+                for attribute in attribute_selectors:
+                    click_function = await self.page.evaluate(f'(element) => element.getAttribute("{attribute}")',
+                                                              element)
+                    if click_function:
+                        break
+                if click_function:
                     is_visible = await element.isIntersectingViewport()
                     if not is_visible:
                         continue
-                    if ng_click_value and ng_click_value not in self.executed_functions:
-                        self.executed_functions.add(ng_click_value)
+                    if click_function and click_function not in self.executed_functions:
+                        self.executed_functions.add(click_function)
                         await element.click()
                         await asyncio.sleep(3)
                         page_url = await self.page.evaluate('window.location.href')

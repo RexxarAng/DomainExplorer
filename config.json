@@ -1,5 +1,5 @@
 {
-  "headless": "false",
+  "headless": "true",
   "chrome_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
   "start_urls": [
     "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
