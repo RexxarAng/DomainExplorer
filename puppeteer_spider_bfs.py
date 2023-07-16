@@ -1,11 +1,14 @@
 import asyncio
 import json
 import logging
+import os
 import re
 import time
 from urllib.parse import urlparse, urljoin
 from pyppeteer import launch
 from tabulate import tabulate
+
+from URLGraphGenerator import URLGraphGenerator
 
 
 class PyppeteerSpider:
@@ -19,6 +22,9 @@ class PyppeteerSpider:
         self.browser = None
         self.page = None
         self.pending_urls = set()
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        template_path = os.path.join(current_dir, "templates", "report_template.html")
+        self.report_generator = URLGraphGenerator(template_path)
 
     def load_config(self, config_path):
         with open(config_path) as f:
@@ -28,6 +34,12 @@ class PyppeteerSpider:
                 self.headless = True
             else:
                 self.headless = False
+
+    def save_sequence_as_artifact(self, domain, sequence_map):
+        file_path = os.path.join("data", domain + ".json")
+        with open(file_path, "w") as f:
+            json.dump(sequence_map, f, indent=4)
+
 
     def normalize_url(self, url):
         if url.endswith('/'):
@@ -57,8 +69,9 @@ class PyppeteerSpider:
             normalized_url = self.normalize_url(url)
             self.pending_urls.add(normalized_url)
             self.sequence[normalized_url] = None  # Add an initial entry to the sequence dictionary
+            domain = urlparse(normalized_url).netloc
             try:
-                await self.bfs_crawl(urlparse(normalized_url).netloc)
+                await self.bfs_crawl(domain)
             except Exception as e:
                 print(e)
                 await self.browser.close()
@@ -71,6 +84,9 @@ class PyppeteerSpider:
             logging.info('Crawling completed in %.2f seconds. Visited URLs:\n%s', elapsed_time, table)
 
             sequence_map = self.map_sequence()
+            self.save_sequence_as_artifact(domain, sequence_map)
+            file_path = os.path.join("reports", domain + ".html")
+            self.report_generator.generate_graph(sequence_map, file_path)
 
             logging.info("URL Sequences:")
             for sequence_url in sequence_map:
@@ -92,7 +108,6 @@ class PyppeteerSpider:
             path.reverse()
             result[url] = path
         return result
-
 
     async def bfs_crawl(self, domain):
         while self.pending_urls:
@@ -117,7 +132,8 @@ class PyppeteerSpider:
             href_value = await self.page.evaluate('(element) => element.href', link)
             if href_value:
                 normalized_url = self.normalize_url(urljoin(parent_url, href_value))
-                if normalized_url not in self.visited_urls and self.is_same_domain(normalized_url, domain) and normalized_url not in self.sequence:
+                if normalized_url not in self.visited_urls and self.is_same_domain(normalized_url,
+                                                                                   domain) and normalized_url not in self.sequence:
                     normalized_parent_url = self.normalize_url(parent_url)
                     self.sequence[normalized_url] = normalized_parent_url
                     self.pending_urls.add(normalized_url)
@@ -141,7 +157,8 @@ class PyppeteerSpider:
                         await asyncio.sleep(3)
                         page_url = await self.page.evaluate('window.location.href')
                         normalized_url = self.normalize_url(page_url)
-                        if normalized_url != current_url and normalized_url not in self.visited_urls and self.is_same_domain(normalized_url, domain):
+                        if normalized_url != current_url and normalized_url not in self.visited_urls and self.is_same_domain(
+                                normalized_url, domain):
                             self.pending_urls.add(normalized_url)
                             self.sequence[normalized_url] = current_url
                             await self.page.goBack()

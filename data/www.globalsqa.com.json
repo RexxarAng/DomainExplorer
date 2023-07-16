@@ -1,0 +1,34 @@
+{
+    "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login": [
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login"
+    ],
+    "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/customer": [
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/customer"
+    ],
+    "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager": [
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager"
+    ],
+    "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/addCust": [
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/addCust"
+    ],
+    "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/openAccount": [
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/openAccount"
+    ],
+    "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/list": [
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/list"
+    ],
+    "https://www.globalsqa.com/angularJs-protractor/BankingProject": [
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/list",
+        "https://www.globalsqa.com/angularJs-protractor/BankingProject"
+    ]
+}

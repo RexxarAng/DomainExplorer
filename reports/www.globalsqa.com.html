@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>URL Graph Visualization</title>
+  <style type="text/css">
+    #url-graph {
+      width: 800px;
+      height: 600px;
+    }
+  </style>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+  <h1>URL Graph Visualization</h1>
+  <div id="url-graph"></div>
+
+  <script>
+    // URL sequences data
+    const urlSequences = {"https://www.globalsqa.com/angularJs-protractor/BankingProject": ["https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/list", "https://www.globalsqa.com/angularJs-protractor/BankingProject"], "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/customer": ["https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/customer"], "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login": ["https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login"], "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager": ["https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager"], "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/addCust": ["https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/addCust"], "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/list": ["https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/list"], "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/openAccount": ["https://www.globalsqa.com/angularJs-protractor/BankingProject/#/login", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager", "https://www.globalsqa.com/angularJs-protractor/BankingProject/#/manager/openAccount"]};
+
+    // Create a new graph
+    const container = document.getElementById("url-graph");
+    const data = {
+      nodes: [],
+      edges: []
+    };
+
+    // Add nodes and edges to the graph based on URL sequences
+    for (const [url, sequence] of Object.entries(urlSequences)) {
+      // Add node
+      data.nodes.push({ id: url, title: url });
+
+      // Add edges
+      for (let i = 1; i < sequence.length; i++) {
+        const source = sequence[i - 1];
+        const target = sequence[i];
+        data.edges.push({ from: source, to: target });
+      }
+    }
+
+    // Set options for the graph layout and appearance
+    const options = {
+      layout: {
+        hierarchical: false
+      },
+      edges: {
+        smooth: true
+      },
+      physics: {
+        enabled: true
+      }
+    };
+
+    // Create a new network using vis.js
+    const network = new vis.Network(container, data, options);
+  </script>
+</body>
+</html>

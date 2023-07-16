@@ -5,3 +5,4 @@ playwright~=1.35.0
 itemadapter~=0.8.0
 pytest-playwright
 pyppeteer
+jinja2
