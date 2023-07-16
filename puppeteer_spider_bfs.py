@@ -70,7 +70,29 @@ class PyppeteerSpider:
             elapsed_time = end_time - start_time
             logging.info('Crawling completed in %.2f seconds. Visited URLs:\n%s', elapsed_time, table)
 
+            sequence_map = self.map_sequence()
+
+            logging.info("URL Sequences:")
+            for sequence_url in sequence_map:
+                path = " -> ".join(sequence_map[sequence_url])
+                logging.info("%s: %s", sequence_url, path)
         await self.browser.close()
+
+    def map_sequence(self):
+        result = {}
+        for url in self.sequence:
+            parent = self.sequence[url]
+            path = [url]
+            while parent:
+                if parent in path:
+                    break
+                path.append(parent)
+                parent = self.sequence[parent]
+
+            path.reverse()
+            result[url] = path
+        return result
+
 
     async def bfs_crawl(self, domain):
         while self.pending_urls:
@@ -86,22 +108,21 @@ class PyppeteerSpider:
                 await self.page.goto(url)
                 await asyncio.sleep(3)
 
-                await self.process_links(url)
-                await self.execute_ng_click_elements()
+                await self.process_links(url, domain)
+                await self.execute_ng_click_elements(domain)
 
-    async def process_links(self, parent_url):
+    async def process_links(self, parent_url, domain):
         links = await self.page.querySelectorAll('a')
         for link in links:
             href_value = await self.page.evaluate('(element) => element.href', link)
             if href_value:
-                absolute_url = urljoin(parent_url, href_value)
-                if absolute_url not in self.visited_urls:
-                    normalized_url = self.normalize_url(absolute_url)
+                normalized_url = self.normalize_url(urljoin(parent_url, href_value))
+                if normalized_url not in self.visited_urls and self.is_same_domain(normalized_url, domain) and normalized_url not in self.sequence:
                     normalized_parent_url = self.normalize_url(parent_url)
                     self.sequence[normalized_url] = normalized_parent_url
                     self.pending_urls.add(normalized_url)
 
-    async def execute_ng_click_elements(self):
+    async def execute_ng_click_elements(self, domain):
         current_url = await self.page.evaluate('window.location.href')
         current_url = self.normalize_url(current_url)
         execute_more_functions = True
@@ -120,7 +141,7 @@ class PyppeteerSpider:
                         await asyncio.sleep(3)
                         page_url = await self.page.evaluate('window.location.href')
                         normalized_url = self.normalize_url(page_url)
-                        if normalized_url != current_url and normalized_url not in self.visited_urls:
+                        if normalized_url != current_url and normalized_url not in self.visited_urls and self.is_same_domain(normalized_url, domain):
                             self.pending_urls.add(normalized_url)
                             self.sequence[normalized_url] = current_url
                             await self.page.goBack()
