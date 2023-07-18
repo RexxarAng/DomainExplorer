@@ -7,12 +7,12 @@ import time
 from urllib.parse import urlparse, urljoin
 from pyppeteer import launch
 from tabulate import tabulate
-
 from URLGraphGenerator import URLGraphGenerator
 
 
 class PyppeteerSpider:
     def __init__(self):
+        self.chrome_path = None
         self.headless = False
         self.start_urls = None
         self.load_config("config.json")

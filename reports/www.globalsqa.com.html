@@ -11,7 +11,7 @@
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 </head>
 <body>
-  <h1>URL Graph Visualization</h1>
+  <h1>Sitemap Graph</h1>
   <div id="url-graph"></div>
 
   <script>
@@ -25,6 +25,9 @@
       edges: []
     };
 
+    // Map to store combined edges and their thickness
+    const combinedEdges = {};
+
     // Add nodes and edges to the graph based on URL sequences
     for (const [url, sequence] of Object.entries(urlSequences)) {
       // Add node
@@ -34,8 +37,24 @@
       for (let i = 1; i < sequence.length; i++) {
         const source = sequence[i - 1];
         const target = sequence[i];
-        data.edges.push({ from: source, to: target });
+
+        // Combine edges between the same source and target
+        const edgeId = `${source}-${target}`;
+        if (combinedEdges[edgeId]) {
+          combinedEdges[edgeId].value += 1;
+        } else {
+          combinedEdges[edgeId] = {
+            from: source,
+            to: target,
+            value: 0
+          };
+        }
       }
+    }
+
+    // Add the combined edges to the data
+    for (const edge of Object.values(combinedEdges)) {
+      data.edges.push(edge);
     }
 
     // Set options for the graph layout and appearance
@@ -44,7 +63,10 @@
         hierarchical: false
       },
       edges: {
-        smooth: true
+        smooth: true,
+        width: function (edge) {
+          return edge.thickness;
+        }
       },
       physics: {
         enabled: true
