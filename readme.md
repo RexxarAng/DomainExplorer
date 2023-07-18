@@ -17,6 +17,9 @@ The DomainExplorer is a web crawling application designed to discover and analyz
 * Update the config.json file
   * start_urls with the urls to crawl
   * chrome_path with the path to the chrome executable
+* Install python dependencies
+  * ``pip install -r requirements.txt ``  
+
 
 ## Technologies
 Project is created with:
